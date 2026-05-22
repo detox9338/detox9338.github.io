@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+# 구글
+User-agent: Googlebot
+Allow: /
+
+# 네이버
+User-agent: Yeti
+Allow: /
+
+# ChatGPT
+User-agent: GPTBot
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Gemini·Google AI
+User-agent: Google-Extended
+Allow: /
+
+# Claude (Anthropic)
+User-agent: anthropic-ai
+Allow: /
+
+# Bing·Copilot
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://detox9338.github.io/sitemap.xml
