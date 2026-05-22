@@ -219,13 +219,16 @@
     <span class="logo-main">해독한의원</span>
     <span class="logo-sub">DETOX KOREAN MEDICINE · SINCE 2000</span>
   </a>
-  <nav>
+  <nav id="main-nav">
     <a href="acupuncture.html">침치료</a>
     <a href="chuna.html">추나치료</a>
     <a href="#hours">진료시간</a>
     <a href="#faq">FAQ</a>
     <a href="#location">찾아오는 길</a>
   </nav>
+  <button class="menu-btn" onclick="toggleMenu()" aria-label="메뉴 열기">
+    <span></span><span></span><span></span>
+  </button>
   <div class="hdr-cta">
     <a href="https://m.booking.naver.com/booking/6/bizes/209863?theme=place&service-target=map-pc&area=bmp" target="_blank" class="btn-call" style="background:#03c75a">네이버 예약</a>
     <a href="tel:0319018270" class="btn-call">📞 전화 예약</a>
@@ -834,6 +837,17 @@
 </footer>
 
 <script>
+// 모바일 메뉴 토글
+function toggleMenu(){
+  const nav=document.getElementById('main-nav');
+  nav.classList.toggle('open');
+}
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('#main-nav a').forEach(a=>a.addEventListener('click',()=>{
+    document.getElementById('main-nav').classList.remove('open');
+  }));
+});
+
 // FAQ 토글
 function tf(el){
   const item=el.closest('.faq-item');
