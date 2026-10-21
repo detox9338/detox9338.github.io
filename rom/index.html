@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14322b">
+<meta name="robots" content="noindex, nofollow">
+<title>어깨 가동범위 측정</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  /* 레이아웃: 휴대폰 한 손 조작. 위에서부터 설정 → 계기판 → 그래프 → 결과표 → 기록 */
+  :root {
+    --bg: #eef2ef; --panel: #ffffff; --ink: #15211d; --sub: #5e6d67; --line: #d6dfdb;
+    --accent: #1d7a5f; --accent-ink: #ffffff; --accent-soft: #dcefe7;
+    --left: #c2632f; --right: #2f6fb8; --warn: #b5422c; --dial: #14322b; --dial-ink: #e8f3ee; --dial-sub: #8fb3a6;
+    --f-body: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    --f-num: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #0f1714; --panel: #17221e; --ink: #e5eee9; --sub: #93a59d; --line: #2a3a34;
+    --accent: #3fb08b; --accent-ink: #06120d; --accent-soft: #1d3a30;
+    --left: #e88a55; --right: #6aa5e8; --warn: #f07a62; --dial: #0b1310; --dial-ink: #e8f3ee; --dial-sub: #7fa596;
+    color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #0f1714; --panel: #17221e; --ink: #e5eee9; --sub: #93a59d; --line: #2a3a34;
+    --accent: #3fb08b; --accent-ink: #06120d; --accent-soft: #1d3a30;
+    --left: #e88a55; --right: #6aa5e8; --warn: #f07a62; --dial: #0b1310; --dial-ink: #e8f3ee; --dial-sub: #7fa596;
+    color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body); word-break: keep-all;
+    padding: env(safe-area-inset-top, 0px) max(14px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); }
+  .app { max-width: 520px; margin: 0 auto; display: grid; gap: 12px; padding-top: 10px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 4px 2px; }
+  h1 { font-size: 21px; margin: 0; letter-spacing: -.02em; }
+  .tag { font-size: 12px; color: var(--sub); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 12px; }
+  .label { font-size: 12.5px; font-weight: 700; color: var(--sub); letter-spacing: .03em; }
+  .field { display: grid; gap: 6px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  input[type=text] { font: inherit; width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--ink); }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button { font: inherit; font-size: 15px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; min-height: 40px; }
+  .seg button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .seg.side button[data-v=L][aria-pressed=true] { background: var(--left); border-color: var(--left); color: #fff; }
+  .seg.side button[data-v=R][aria-pressed=true] { background: var(--right); border-color: var(--right); color: #fff; }
+  .seg.side button { flex: 1; }
+  .howto { font-size: 14.5px; color: var(--sub); background: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 0; }
+  .howto b { color: var(--ink); }
+
+  /* 계기판 */
+  .dial { background: var(--dial); color: var(--dial-ink); border-radius: 18px; padding: 14px 14px 16px; display: grid; gap: 8px; }
+  .dial-top { display: flex; justify-content: space-between; font-size: 13px; color: var(--dial-sub); }
+  .dial-top b { color: var(--dial-ink); }
+  .gauge { width: 100%; max-width: 100%; aspect-ratio: 2 / 1.12; display: block; }
+  .readout { display: flex; align-items: flex-end; justify-content: center; gap: 18px; margin-top: -8px; }
+  .big { font-family: var(--f-num); font-size: 64px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 26px; vertical-align: top; }
+  .peak { font-family: var(--f-num); font-size: 15px; color: var(--dial-sub); text-align: left; line-height: 1.3; }
+  .peak b { display: block; font-size: 24px; color: var(--dial-ink); }
+  .status { text-align: center; font-size: 16px; min-height: 26px; color: var(--dial-ink); font-weight: 500; }
+  .status.go { color: #8ff0c6; }
+  .btn { font: inherit; font-weight: 700; font-size: 17px; min-height: 52px; border-radius: 12px; border: 0; cursor: pointer; padding: 0 16px; }
+  .btn.main { background: var(--accent); color: var(--accent-ink); width: 100%; }
+  .dial .btn.main { background: #3fb08b; color: #06120d; }
+  .dial .btn.main.stop { background: #f07a62; color: #1a0703; }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); min-height: 44px; font-size: 15px; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  canvas.chart { width: 100%; height: 120px; display: block; }
+  .chart-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); }
+
+  /* 결과표 */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { padding: 9px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 12.5px; color: var(--sub); font-weight: 700; }
+  td.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+  td.L { color: var(--left); } td.R { color: var(--right); }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-family: var(--f-body); }
+  .pill.bad { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+  .norm { font-size: 12px; color: var(--sub); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hist { display: grid; gap: 8px; }
+  .hist-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; display: grid; gap: 4px; }
+  .hist-item .h { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+  .hist-item .h span { font-weight: 400; color: var(--sub); font-size: 13px; }
+  .hist-item .v { font-family: var(--f-num); font-size: 13.5px; color: var(--sub); }
+  .hist-item .x { justify-self: end; font: inherit; font-size: 13px; color: var(--warn); background: none; border: 0; cursor: pointer; padding: 2px 0; }
+  .empty { color: var(--sub); font-size: 14px; text-align: center; padding: 10px; }
+  .note { font-size: 12.5px; color: var(--sub); margin: 0; }
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+  .warnbox { font-size: 14px; background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--warn); border-radius: 10px; padding: 10px 12px; margin: 0; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>어깨 가동범위 측정</h1>
+    <span class="tag">휴대폰 기울기 센서 사용</span>
+  </header>
+
+  <section class="panel" aria-label="측정 설정">
+    <div class="row2">
+      <div class="field"><label class="label" for="memo">차트번호·메모</label><input type="text" id="memo" placeholder="예: 1024 (이름 X)" autocomplete="off"></div>
+      <div class="field"><span class="label">시점</span>
+        <div class="seg" id="phase"><button data-v="치료 전" aria-pressed="true">치료 전</button><button data-v="치료 후" aria-pressed="false">치료 후</button></div>
+      </div>
+    </div>
+    <div class="field"><span class="label">동작</span><div class="seg" id="motion"></div></div>
+    <div class="field"><span class="label">측정하는 쪽</span>
+      <div class="seg side" id="side"><button data-v="L" aria-pressed="false">왼쪽</button><button data-v="R" aria-pressed="true">오른쪽</button></div>
+    </div>
+    <p class="howto" id="howto"></p>
+  </section>
+
+  <section class="dial" aria-label="계기판">
+    <div class="dial-top"><span id="dialName">굴곡 · 오른쪽</span><span>정상 <b id="dialNorm">180°</b></span></div>
+    <canvas class="gauge" id="gauge" width="640" height="358" aria-hidden="true"></canvas>
+    <div class="readout">
+      <div class="big" aria-live="off"><span id="angle">0</span><small>°</small></div>
+      <div class="peak">최대<b id="peak">–</b></div>
+    </div>
+    <div class="status" id="status" role="status">휴대폰을 팔에 대고 측정 시작을 누르세요</div>
+    <button class="btn main" id="startBtn">측정 시작</button>
+    <p class="warnbox" id="sensorWarn" hidden></p>
+  </section>
+
+  <section class="panel" aria-label="각도 그래프">
+    <div class="chart-legend"><span class="label">각도 변화</span><span id="chartInfo">0초</span></div>
+    <canvas class="chart" id="chart" aria-hidden="true"></canvas>
+  </section>
+
+  <section class="panel" aria-label="이번 측정 결과">
+    <div class="chart-legend"><span class="label">이번 측정 결과</span><span class="norm" id="resultHead"></span></div>
+    <div class="table-wrap"><table id="result"></table></div>
+    <p class="note">차이 = 두 쪽의 차이 ÷ 큰 쪽 × 100. 10% 이상이면 빨간색으로 표시합니다.</p>
+    <div class="actions">
+      <button class="btn ghost" id="saveBtn">기록 저장</button>
+      <button class="btn ghost" id="copyBtn">차트용 복사</button>
+    </div>
+    <button class="btn ghost" id="clearBtn" style="color:var(--sub);border-color:var(--line)">이번 측정 비우기</button>
+  </section>
+
+  <section class="panel" aria-label="저장한 기록">
+    <span class="label">저장한 기록 <span id="histCount"></span></span>
+    <div class="hist" id="hist"></div>
+    <p class="note">기록은 이 휴대폰 브라우저 안에만 저장되고 어디로도 전송되지 않습니다. 환자 이름 대신 차트번호를 쓰세요. 브라우저 사이트 데이터를 지우면 기록도 지워집니다.</p>
+  </section>
+
+  <p class="note" style="text-align:center">진료 참고용 도구이며 의료기기가 아닙니다. 휴대폰과 팔 사이가 흔들리지 않게 밴드로 고정하면 더 정확합니다.</p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- 동작 정보 ----------
+// norm: 정상 범위(AAOS 기준 참고값)
+const MOTIONS = [
+  { id: 'flex', name: '굴곡', desc: '앞으로 올리기', norm: 180,
+    how: '<b>선 자세.</b> 휴대폰을 위팔(또는 팔꿈치를 편 아래팔) 바깥쪽에 길게 대고 밴드로 고정합니다. 팔을 내린 채 측정 시작 → 엄지를 위로 하고 <b>앞으로</b> 끝까지 올립니다.' },
+  { id: 'abd', name: '외전', desc: '옆으로 올리기', norm: 180,
+    how: '<b>선 자세.</b> 휴대폰을 위팔 바깥쪽(또는 뒤쪽)에 길게 대고 고정합니다. 팔을 내린 채 측정 시작 → 손바닥을 앞으로 하고 <b>옆으로</b> 끝까지 올립니다.' },
+  { id: 'ext', name: '신전', desc: '뒤로 올리기', norm: 60,
+    how: '<b>선 자세.</b> 휴대폰을 위팔 바깥쪽에 길게 대고 고정합니다. 팔을 내린 채 측정 시작 → 몸통이 앞으로 숙여지지 않게 하고 팔을 <b>뒤로</b> 올립니다.' },
+  { id: 'er', name: '외회전', desc: '누워서 바깥돌림', norm: 90,
+    how: '<b>누운 자세.</b> 어깨를 90° 벌리고 팔꿈치를 90° 굽혀 아래팔이 천장을 향하게 합니다. 휴대폰을 아래팔에 길게 대고 고정 → 측정 시작 → 손등이 <b>머리 쪽 바닥</b>으로 가도록 돌립니다.' },
+  { id: 'ir', name: '내회전', desc: '누워서 안쪽돌림', norm: 70,
+    how: '<b>누운 자세.</b> 외회전과 같은 시작 자세에서 측정 시작 → 손바닥이 <b>발 쪽 바닥</b>으로 가도록 돌립니다. 어깨가 바닥에서 들리지 않게 잡아 줍니다.' },
+];
+const SIDE_NAME = { L: '왼쪽', R: '오른쪽' };
+
+// ---------- 저장 ----------
+const KEY = 'shoulder-rom-v1';
+function loadStore() { try { return JSON.parse(localStorage.getItem(KEY)) || { history: [] }; } catch { return { history: [] }; } }
+function saveStore() { try { localStorage.setItem(KEY, JSON.stringify(store)); return true; } catch { return false; } }
+let store = loadStore();
+
+// ---------- 상태 ----------
+const $ = s => document.querySelector(s);
+let motion = MOTIONS[0], side = 'R', phase = '치료 전';
+let current = {};                 // { flex: { L: 160, R: 151 }, ... } 이번 측정
+let mode = 'idle';                // idle | zeroing | measuring
+let up = null, zero = null, angle = 0, peak = 0, samples = [], t0 = 0, returnTimer = 0;
+let source = null, lastSensorAt = 0, demo = false, wakeLock = null;
+
+// ---------- 화면: 설정 ----------
+$('#motion').innerHTML = MOTIONS.map((m, i) => `<button data-i="${i}" aria-pressed="${i === 0}">${m.name}<span style="font-weight:400;opacity:.75"> · ${m.desc}</span></button>`).join('');
+function bindSeg(el, fn) {
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || mode !== 'idle') return;
+    el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    fn(b); renderSetup();
+  });
+}
+bindSeg($('#motion'), b => motion = MOTIONS[b.dataset.i]);
+bindSeg($('#side'), b => side = b.dataset.v);
+bindSeg($('#phase'), b => phase = b.dataset.v);
+function renderSetup() {
+  $('#howto').innerHTML = motion.how;
+  $('#dialName').textContent = `${motion.name} · ${SIDE_NAME[side]}`;
+  $('#dialNorm').textContent = motion.norm + '°';
+  drawGauge();
+}
+
+// ---------- 센서 ----------
+// 휴대폰이 느끼는 "위쪽" 방향을 몸 기준이 아니라 휴대폰 기준으로 구하고,
+// 측정 시작 때의 방향과 지금 방향 사이의 각도를 잽니다. 휴대폰을 어느 면에 대든 같은 방식으로 맞습니다.
+const rad = d => d * Math.PI / 180;
+function norm3(v) { const n = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / n, v[1] / n, v[2] / n]; }
+function smooth(v) { up = up ? norm3(up.map((x, i) => x + (v[i] - x) * 0.25)) : v; }
+function onOrientation(e) {
+  if (e.beta == null || e.gamma == null) return;
+  if (source === 'motion') return;
+  source = 'orientation'; lastSensorAt = performance.now();
+  const b = rad(e.beta), g = rad(e.gamma);
+  smooth(norm3([-Math.sin(g) * Math.cos(b), Math.sin(b), Math.cos(b) * Math.cos(g)]));
+}
+function onMotion(e) {
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  if (source === 'orientation' && performance.now() - lastSensorAt < 500) return;
+  source = 'motion'; lastSensorAt = performance.now();
+  smooth(norm3([a.x, a.y, a.z]));
+}
+async function startSensors() {
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const r = await DeviceOrientationEvent.requestPermission();
+      if (r !== 'granted') throw new Error('denied');
+    }
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      try { await DeviceMotionEvent.requestPermission(); } catch {}
+    }
+  } catch {
+    showSensorWarn('움직임 센서 사용을 허용해야 측정할 수 있습니다. 아이폰은 Safari 설정에서 "동작 및 방향 접근"을 켜고 다시 시도해 주세요.');
+    return false;
+  }
+  window.addEventListener('deviceorientation', onOrientation);
+  window.addEventListener('devicemotion', onMotion);
+  await new Promise(r => setTimeout(r, 700));
+  if (!up) {
+    showSensorWarn('이 기기에서 움직임 센서를 찾지 못했습니다. 휴대폰의 크롬이나 Safari에서 https 주소로 열어 주세요. 지금은 가상 측정으로 작동 방식을 보여 드립니다.');
+    demo = true;
+  }
+  return true;
+}
+function showSensorWarn(msg) { const w = $('#sensorWarn'); w.textContent = msg; w.hidden = false; }
+
+// 센서가 없을 때 보여 주는 가상 측정 (0 → 151° → 0)
+let demoT = 0;
+function demoUp() {
+  demoT += 1 / 30;
+  const a = rad(Math.max(0, Math.sin(Math.min(demoT / 4, 1) * Math.PI)) * 151 + Math.sin(demoT * 9) * 0.6);
+  up = [0, -Math.cos(a), Math.sin(a)];
+}
+
+// ---------- 측정 흐름 ----------
+function angleNow() {
+  if (!up || !zero) return 0;
+  const d = up[0] * zero[0] + up[1] * zero[1] + up[2] * zero[2];
+  return Math.acos(Math.max(-1, Math.min(1, d))) * 180 / Math.PI;
+}
+async function begin() {
+  if (!demo && !source) { const ok = await startSensors(); if (!ok) return; }
+  unlockAudio();
+  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
+  mode = 'zeroing'; peak = 0; samples = []; zero = null; demoT = 0;
+  $('#startBtn').textContent = '취소'; $('#startBtn').classList.add('stop');
+  setStatus('가만히 계세요… 3', false); say('가만히 계세요');
+  const acc = [0, 0, 0];
+  for (let i = 3; i >= 1; i--) {
+    setStatus(`가만히 계세요… ${i}`, false); beep(660, .08);
+    await wait(1000);
+    if (mode !== 'zeroing') return;
+    if (demo) demoUp();
+    acc[0] += up[0]; acc[1] += up[1]; acc[2] += up[2];
+  }
+  zero = norm3(acc);
+  mode = 'measuring'; t0 = performance.now(); demoT = 0;
+  $('#startBtn').textContent = '측정 끝내기';
+  setStatus(`${motion.desc}: 끝까지 천천히`, true); beep(990, .18); vibrate(120);
+  say(`${motion.desc}. 끝까지 천천히 올려 주세요`);
+}
+function finish(auto) {
+  if (mode !== 'measuring') { cancel(); return; }
+  mode = 'idle';
+  const val = Math.round(peak);
+  current[motion.id] = Object.assign(current[motion.id] || {}, { [side]: val });
+  setStatus(`${motion.name} ${SIDE_NAME[side]} 최대 ${val}° 기록`, false);
+  beep(520, .12); setTimeout(() => beep(780, .2), 140); vibrate([80, 60, 160]);
+  say(`${SIDE_NAME[side]} ${val}도`);
+  resetBtn(); renderResult();
+  wakeLock?.release?.().catch(() => {}); wakeLock = null;
+}
+function cancel() { mode = 'idle'; setStatus('취소했습니다', false); resetBtn(); }
+function resetBtn() { $('#startBtn').textContent = '측정 시작'; $('#startBtn').classList.remove('stop'); }
+$('#startBtn').addEventListener('click', () => { if (mode === 'idle') begin(); else if (mode === 'measuring') finish(false); else cancel(); });
+function setStatus(t, go) { const s = $('#status'); s.textContent = t; s.classList.toggle('go', !!go); }
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function tick() {
+  if (demo && mode === 'measuring') demoUp();
+  if (mode === 'measuring') {
+    angle = angleNow();
+    if (angle > peak) peak = angle;
+    const t = (performance.now() - t0) / 1000;
+    samples.push([t, angle]);
+    // 최대치까지 올렸다가 다시 내려오면 자동으로 끝냅니다.
+    if (peak > 30 && angle < Math.min(20, peak * 0.25)) { if (!returnTimer) returnTimer = performance.now(); if (performance.now() - returnTimer > 600) finish(true); }
+    else returnTimer = 0;
+    $('#chartInfo').textContent = t.toFixed(1) + '초';
+  } else if (mode === 'idle' && zero && up && !demo) {
+    angle = angleNow();
+  }
+  $('#angle').textContent = Math.round(mode === 'zeroing' ? 0 : angle);
+  $('#peak').textContent = peak ? Math.round(peak) + '°' : '–';
+  drawGauge(); drawChart();
+  requestAnimationFrame(tick);
+}
+
+// ---------- 소리·진동·음성 (화면을 못 보는 자세일 때) ----------
+let actx = null;
+function unlockAudio() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch {} }
+function beep(f, d) {
+  try { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f; o.connect(g); g.connect(actx.destination);
+    g.gain.setValueAtTime(.2, actx.currentTime); g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + d); o.start(); o.stop(actx.currentTime + d); } catch {}
+}
+function vibrate(p) { try { navigator.vibrate?.(p); } catch {} }
+function say(t) { try { const u = new SpeechSynthesisUtterance(t); u.lang = 'ko-KR'; u.rate = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch {} }
+
+// ---------- 그리기 ----------
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function drawGauge() {
+  const c = $('#gauge'), x = c.getContext('2d'), W = c.width, H = c.height;
+  const cx = W / 2, cy = H - 34, r = W / 2 - 46;
+  const ink = '#e8f3ee', sub = 'rgba(232,243,238,.38)', sideCol = side === 'L' ? css('--left') : css('--right');
+  x.clearRect(0, 0, W, H);
+  const at = d => Math.PI + rad(d);               // 0° 왼쪽 끝 → 180° 오른쪽 끝
+  x.lineCap = 'round';
+  x.lineWidth = 22; x.strokeStyle = 'rgba(232,243,238,.10)';
+  x.beginPath(); x.arc(cx, cy, r, Math.PI, 2 * Math.PI); x.stroke();
+  // 정상 범위
+  x.lineWidth = 4; x.strokeStyle = 'rgba(143,240,198,.55)';
+  x.beginPath(); x.arc(cx, cy, r + 20, Math.PI, at(motion.norm)); x.stroke();
+  // 최대치
+  if (peak > 0.5) { x.lineWidth = 22; x.strokeStyle = sideCol; x.globalAlpha = .9; x.beginPath(); x.arc(cx, cy, r, Math.PI, at(Math.min(peak, 180))); x.stroke(); x.globalAlpha = 1; }
+  // 눈금
+  x.font = '600 20px ' + css('--f-num'); x.fillStyle = sub; x.textAlign = 'center'; x.textBaseline = 'middle';
+  for (let d = 0; d <= 180; d += 10) {
+    const a = at(d), long = d % 30 === 0;
+    x.strokeStyle = long ? 'rgba(232,243,238,.6)' : sub; x.lineWidth = long ? 3 : 1.5;
+    x.beginPath(); x.moveTo(cx + Math.cos(a) * (r - 16), cy + Math.sin(a) * (r - 16)); x.lineTo(cx + Math.cos(a) * (r - (long ? 34 : 26)), cy + Math.sin(a) * (r - (long ? 34 : 26))); x.stroke();
+    if (long) x.fillText(d, cx + Math.cos(a) * (r - 56), cy + Math.sin(a) * (r - 56));
+  }
+  // 바늘
+  const shown = mode === 'zeroing' ? 0 : Math.min(angle, 180), a = at(shown);
+  x.strokeStyle = ink; x.lineWidth = 5;
+  x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(a) * (r - 8), cy + Math.sin(a) * (r - 8)); x.stroke();
+  x.fillStyle = ink; x.beginPath(); x.arc(cx, cy, 10, 0, 2 * Math.PI); x.fill();
+}
+function drawChart() {
+  const c = $('#chart'), dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+  const L = 30, B = h - 18, T = 6, R = w - 4, maxT = Math.max(6, samples.length ? samples[samples.length - 1][0] : 0);
+  x.font = '11px ' + css('--f-num'); x.fillStyle = css('--sub'); x.strokeStyle = css('--line'); x.lineWidth = 1; x.textAlign = 'right'; x.textBaseline = 'middle';
+  for (const d of [0, 60, 120, 180]) { const y = B - (B - T) * d / 180; x.beginPath(); x.moveTo(L, y); x.lineTo(R, y); x.stroke(); x.fillText(d, L - 5, y); }
+  x.textAlign = 'center'; x.textBaseline = 'top';
+  for (let s = 0; s <= maxT; s += maxT > 12 ? 4 : 2) x.fillText(s + 's', L + (R - L) * s / maxT, B + 4);
+  const yN = B - (B - T) * motion.norm / 180; x.setLineDash([4, 4]); x.strokeStyle = css('--accent'); x.beginPath(); x.moveTo(L, yN); x.lineTo(R, yN); x.stroke(); x.setLineDash([]);
+  if (samples.length > 1) {
+    x.strokeStyle = side === 'L' ? css('--left') : css('--right'); x.lineWidth = 2.2; x.beginPath();
+    samples.forEach(([t, d], i) => { const px = L + (R - L) * t / maxT, py = B - (B - T) * Math.min(d, 180) / 180; i ? x.lineTo(px, py) : x.moveTo(px, py); });
+    x.stroke();
+  }
+}
+
+// ---------- 결과표 ----------
+function asym(l, r) { return (l == null || r == null || !Math.max(l, r)) ? null : Math.abs(l - r) / Math.max(l, r) * 100; }
+function rowsOf(res) { return MOTIONS.filter(m => res[m.id]).map(m => ({ m, L: res[m.id].L, R: res[m.id].R })); }
+function renderResult() {
+  const rows = rowsOf(current);
+  $('#resultHead').textContent = [$('#memo').value.trim(), phase].filter(Boolean).join(' · ');
+  $('#result').innerHTML = rows.length
+    ? `<tr><th>동작 (정상)</th><th>왼쪽</th><th>오른쪽</th><th>차이</th></tr>` + rows.map(({ m, L, R }) => {
+        const a = asym(L, R);
+        return `<tr><td>${m.name} <span class="norm">${m.norm}°</span></td><td class="num L">${L != null ? L + '°' : '–'}</td><td class="num R">${R != null ? R + '°' : '–'}</td>
+          <td>${a == null ? '<span class="norm">–</span>' : `<span class="pill ${a >= 10 ? 'bad' : ''}">${a.toFixed(1)}%</span>`}</td></tr>`;
+      }).join('')
+    : `<tr><td class="empty" colspan="4">측정하면 여기에 왼쪽·오른쪽 최대 각도가 쌓입니다.</td></tr>`;
+  $('#saveBtn').disabled = $('#copyBtn').disabled = !rows.length;
+}
+function summaryText(rec) {
+  const lines = rowsOf(rec.result).map(({ m, L, R }) => {
+    const a = asym(L, R);
+    return `${m.name} L ${L ?? '-'}° / R ${R ?? '-'}°${a == null ? '' : ` (차이 ${a.toFixed(1)}%)`}`;
+  });
+  return `[어깨 ROM] ${rec.date} ${rec.phase}${rec.memo ? ' ' + rec.memo : ''}\n` + lines.join('\n');
+}
+function nowStr() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800); }
+
+$('#saveBtn').addEventListener('click', () => {
+  store.history.unshift({ id: Date.now().toString(36), date: nowStr(), memo: $('#memo').value.trim(), phase, result: JSON.parse(JSON.stringify(current)) });
+  toast(saveStore() ? '저장했습니다' : '이 브라우저에서는 저장할 수 없습니다');
+  renderHist();
+});
+$('#copyBtn').addEventListener('click', async () => {
+  const text = summaryText({ date: nowStr(), memo: $('#memo').value.trim(), phase, result: current });
+  try { await navigator.clipboard.writeText(text); toast('복사했습니다. 차트에 붙여 넣으세요'); }
+  catch { toast('복사하지 못했습니다'); }
+});
+let clearArmed = 0;
+$('#clearBtn').addEventListener('click', e => {
+  if (Date.now() - clearArmed > 3000) { clearArmed = Date.now(); e.target.textContent = '한 번 더 누르면 비웁니다'; setTimeout(() => e.target.textContent = '이번 측정 비우기', 3000); return; }
+  current = {}; peak = 0; samples = []; renderResult(); e.target.textContent = '이번 측정 비우기'; toast('비웠습니다');
+});
+$('#memo').addEventListener('input', renderResult);
+
+// ---------- 기록 ----------
+function renderHist() {
+  const h = store.history;
+  $('#histCount').textContent = h.length ? `(${h.length})` : '';
+  $('#hist').innerHTML = h.length ? h.map(r => {
+    // 같은 메모의 바로 이전 기록과 비교 (치료 전 → 치료 후)
+    const prev = r.memo && h.find(o => o !== r && o.memo === r.memo && o.date <= r.date && h.indexOf(o) > h.indexOf(r));
+    const vals = rowsOf(r.result).map(({ m, L, R }) => {
+      const d = s => { const p = prev?.result?.[m.id]?.[s], v = r.result[m.id][s]; return v == null ? '-' : v + '°' + (p != null ? `(${v - p >= 0 ? '+' : ''}${v - p})` : ''); };
+      return `${m.name} L ${d('L')} R ${d('R')}`;
+    }).join(' · ');
+    return `<div class="hist-item"><div class="h">${esc(r.memo || '메모 없음')} · ${esc(r.phase)}<span>${esc(r.date)}</span></div>
+      <div class="v">${vals}</div>${prev ? `<div class="norm">괄호 안은 ${esc(prev.date)} ${esc(prev.phase)} 대비 변화</div>` : ''}
+      <button class="x" data-del="${r.id}">삭제</button></div>`;
+  }).join('') : '<div class="empty">아직 저장한 기록이 없습니다.</div>';
+}
+$('#hist').addEventListener('click', e => {
+  const id = e.target.dataset.del; if (!id) return;
+  if (e.target.dataset.armed !== '1') { e.target.dataset.armed = '1'; e.target.textContent = '한 번 더 누르면 삭제'; return; }
+  store.history = store.history.filter(r => r.id !== id); saveStore(); renderHist();
+});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------- 시작 ----------
+if (!window.isSecureContext) showSensorWarn('휴대폰 센서는 https 주소에서만 작동합니다. 안내받은 https 주소로 열어 주세요.');
+renderSetup(); renderResult(); renderHist(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>
